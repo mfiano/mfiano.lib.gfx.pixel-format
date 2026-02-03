@@ -11,7 +11,9 @@
   :pathname "src"
   :serial t
   :components
-  ((:file "pixel-format")))
+  ((:file "package")
+   (:file "pixel-format")
+   (:file "definitions")))
 
 (asdf:defsystem #:mfiano.lib.gfx.pixel-format/test
   :description "Unit tests for mfiano.lib.gfx.pixel-format"

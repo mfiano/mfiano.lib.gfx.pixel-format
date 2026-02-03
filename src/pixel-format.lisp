@@ -1,508 +1,218 @@
-(in-package #:mfiano.lib.base.pkg)
-
-(define-package #:mfiano.lib.gfx.pixel-format
-  (:local-nicknames
-   (#:s #:mfiano.lib.math.scalar.f64))
-  (:use #:mfiano.lib.base.util)
-  ;; type
-  (:export
-   #:pixel-format
-   #:pixel-format/u8
-   #:pixel-format/u16
-   #:pixel-format/u24
-   #:pixel-format/u32)
-  ;; definer
-  (:export
-   #:define-pixel-format)
-  ;; accessors
-  (:export
-   #:get-bpp
-   #:get-channel-count
-   #:get-decoder
-   #:get-encoder
-   #:get-storage)
-  ;; builtin formats
-  (:export
-   #:abgr8888/u8
-   #:abgr8888/u32
-   #:bgr888/u8
-   #:ga1616/u16
-   #:ga1616/u32
-   #:rgb888/u8
-   #:rgba8888/u8
-   #:rgba8888/u32)
-  ;; builtin codecs
-  (:export
-   #:encode-abgr8888/u8
-   #:encode-abgr8888/u32
-   #:encode-bgr888/u8
-   #:encode-ga1616/u16
-   #:encode-ga1616/u32
-   #:encode-rgb888/u8
-   #:encode-rgba8888/u8
-   #:encode-rgba8888/u32
-   #:decode-abgr8888/u8
-   #:decode-abgr8888/u32
-   #:decode-bgr888/u8
-   #:decode-ga1616/u16
-   #:decode-ga1616/u32
-   #:decode-rgb888/u8
-   #:decode-rgba8888/u8
-   #:decode-rgba8888/u32))
-
 (in-package #:mfiano.lib.gfx.pixel-format)
 
 (deftype pixel-format/u8 () '(member abgr8888/u8 bgr888/u8 rgb888/u8 rgba8888/u8))
 
 (deftype pixel-format/u16 () '(member ga1616/u16))
 
-(deftype pixel-format/u24 () '(member))
+(deftype pixel-format/u32 () '(member abgr8888/u32 ga1616/u32 rgba8888/u32))
 
-(deftype pixel-format/u32 () '(member abgr8888/u32 rgba8888/u32))
+(deftype pixel-format/f32 () '(member abgr/f32 bgr/f32 ga/f32 gray/f32 rgb/f32 rgba/f32))
 
-(deftype pixel-format () '(or pixel-format/u8 pixel-format/u16 pixel-format/u24 pixel-format/u32))
+(deftype pixel-format/f64 () '(member abgr/f64 bgr/f64 ga/f64 gray/f64 rgb/f64 rgba/f64))
 
-(deftype bpp () '(member 8 16 24 32))
+(deftype pixel-format ()
+  '(or pixel-format/u8 pixel-format/u16 pixel-format/u32 pixel-format/f32 pixel-format/f64))
 
-(deftype storage () '(member :u8 :u16 :u24 :u32))
+(deftype storage () '(member :u8 :u16 :u32 :f32 :f64))
 
 (deftype buffer/u8 () '(u8-array (*)))
 
 (deftype buffer/u16 () '(u16-array (*)))
 
-(deftype buffer/u24 () '(u24-array (*)))
-
 (deftype buffer/u32 () '(u32-array (*)))
+
+(deftype buffer/f32 () '(f32-array (*)))
+
+(deftype buffer/f64 () '(f64-array (*)))
 
 (deftype index () 'array-index)
 
-(define-ftype get-encoder (pixel-format) fn)
-(declaim (inline get-encoder))
-(defun get-encoder (pixel-format)
-  (declare (optimize (speed 3)))
-  (get pixel-format :encoder))
+(defun check-layout (layout)
+  (let ((valid '(:packed :unpacked)))
+    (unless (member layout valid)
+      (error ":LAYOUT must be one of ~{~s~^, ~}. Got: ~s" valid layout))))
 
-(define-ftype get-decoder (pixel-format) fn)
-(declaim (inline get-decoder))
-(defun get-decoder (pixel-format)
-  (declare (optimize (speed 3)))
-  (get pixel-format :decoder))
-
-(define-ftype get-channel-count (pixel-format) (integer 1 4))
-(declaim (inline get-channel-count))
-(defun get-channel-count (pixel-format)
-  (declare (optimize (speed 3)))
-  (get pixel-format :channels))
-
-(define-ftype get-bpp (pixel-format) bpp)
-(declaim (inline get-bpp))
-(defun get-bpp (pixel-format)
-  (declare (optimize (speed 3)))
-  (get pixel-format :bpp))
-
-(define-ftype get-storage (pixel-format) storage)
-(declaim (inline get-storage))
-(defun get-storage (pixel-format)
-  (declare (optimize (speed 3)))
-  (get pixel-format :storage))
-
-(define-ftype ref/le8 (buffer/u8 index) u8)
-(declaim (inline ref/le8))
-(defun ref/le8 (buffer index)
-  (declare (optimize (speed 3)))
-  (aref buffer index))
-
-(define-ftype ref/le16 (buffer/u8 index) u16)
-(declaim (inline ref/le16))
-(defun ref/le16 (buffer index)
-  (declare (optimize (speed 3)))
-  (let ((value 0))
-    (setf (ldb (byte 8 0) value) (aref buffer (+ index 0))
-          (ldb (byte 8 8) value) (aref buffer (+ index 1)))
-    value))
-
-(define-ftype ref/le24 (buffer/u8 index) u24)
-(declaim (inline ref/le24))
-(defun ref/le24 (buffer index)
-  (declare (optimize (speed 3)))
-  (let ((value 0))
-    (setf (ldb (byte 8 0) value) (aref buffer (+ index 0))
-          (ldb (byte 8 8) value) (aref buffer (+ index 1))
-          (ldb (byte 8 16) value) (aref buffer (+ index 2)))
-    value))
-
-(define-ftype ref/le32 (buffer/u8 index) u32)
-(declaim (inline ref/le32))
-(defun ref/le32 (buffer index)
-  (declare (optimize (speed 3)))
-  (let ((value 0))
-    (setf (ldb (byte 8 0) value) (aref buffer (+ index 0))
-          (ldb (byte 8 8) value) (aref buffer (+ index 1))
-          (ldb (byte 8 16) value) (aref buffer (+ index 2))
-          (ldb (byte 8 24) value) (aref buffer (+ index 3)))
-    value))
-
-(define-ftype ref/be8 (buffer/u8 index) u8)
-(declaim (inline ref/be8))
-(defun ref/be8 (buffer index)
-  (declare (optimize (speed 3)))
-  (aref buffer index))
-
-(define-ftype ref/be16 (buffer/u8 index) u16)
-(declaim (inline ref/be16))
-(defun ref/be16 (buffer index)
-  (declare (optimize (speed 3)))
-  (let ((value 0))
-    (setf (ldb (byte 8 8) value) (aref buffer (+ index 0))
-          (ldb (byte 8 0) value) (aref buffer (+ index 1)))
-    value))
-
-(define-ftype ref/be24 (buffer/u8 index) u24)
-(declaim (inline ref/be24))
-(defun ref/be24 (buffer index)
-  (declare (optimize (speed 3)))
-  (let ((value 0))
-    (setf (ldb (byte 8 16) value) (aref buffer (+ index 0))
-          (ldb (byte 8 8) value) (aref buffer (+ index 1))
-          (ldb (byte 8 0) value) (aref buffer (+ index 2)))
-    value))
-
-(define-ftype ref/be32 (buffer/u8 index) u32)
-(declaim (inline ref/be32))
-(defun ref/be32 (buffer index)
-  (declare (optimize (speed 3)))
-  (let ((value 0))
-    (setf (ldb (byte 8 24) value) (aref buffer (+ index 0))
-          (ldb (byte 8 16) value) (aref buffer (+ index 1))
-          (ldb (byte 8 8) value) (aref buffer (+ index 2))
-          (ldb (byte 8 0) value) (aref buffer (+ index 3)))
-    value))
-
-(define-ftype (setf ref/le8) (u8 buffer/u8 index) (values))
-(declaim (inline (setf ref/le8)))
-(defun (setf ref/le8) (value buffer index)
-  (declare (optimize (speed 3)))
-  (setf (aref buffer index) value)
-  (values))
-
-(define-ftype (setf ref/le16) (u16 buffer/u8 index) (values))
-(declaim (inline (setf ref/le16)))
-(defun (setf ref/le16) (value buffer index)
-  (declare (optimize (speed 3)))
-  (setf (aref buffer (+ index 0)) (ldb (byte 8 0) value)
-        (aref buffer (+ index 1)) (ldb (byte 8 8) value))
-  (values))
-
-(define-ftype (setf ref/le24) (u24 buffer/u8 index) (values))
-(declaim (inline (setf ref/le24)))
-(defun (setf ref/le24) (value buffer index)
-  (declare (optimize (speed 3)))
-  (setf (aref buffer (+ index 0)) (ldb (byte 8 0) value)
-        (aref buffer (+ index 1)) (ldb (byte 8 8) value)
-        (aref buffer (+ index 2)) (ldb (byte 8 16) value))
-  (values))
-
-(define-ftype (setf ref/le32) (u32 buffer/u8 index) (values))
-(declaim (inline (setf ref/le32)))
-(defun (setf ref/le32) (value buffer index)
-  (declare (optimize (speed 3)))
-  (setf (aref buffer (+ index 0)) (ldb (byte 8 0) value)
-        (aref buffer (+ index 1)) (ldb (byte 8 8) value)
-        (aref buffer (+ index 2)) (ldb (byte 8 16) value)
-        (aref buffer (+ index 3)) (ldb (byte 8 24) value))
-  (values))
-
-(define-ftype (setf ref/be8) (u8 buffer/u8 index) (values))
-(declaim (inline (setf ref/be8)))
-(defun (setf ref/be8) (value buffer index)
-  (setf (aref buffer index) value)
-  (values))
-
-(define-ftype (setf ref/be16) (u16 buffer/u8 index) (values))
-(declaim (inline (setf ref/be16)))
-(defun (setf ref/be16) (value buffer index)
-  (declare (optimize (speed 3)))
-  (setf (aref buffer (+ index 0)) (ldb (byte 8 8) value)
-        (aref buffer (+ index 1)) (ldb (byte 8 0) value))
-  (values))
-
-(define-ftype (setf ref/be24) (u24 buffer/u8 index) (values))
-(declaim (inline (setf ref/be24)))
-(defun (setf ref/be24) (value buffer index)
-  (declare (optimize (speed 3)))
-  (setf (aref buffer (+ index 0)) (ldb (byte 8 16) value)
-        (aref buffer (+ index 1)) (ldb (byte 8 8) value)
-        (aref buffer (+ index 2)) (ldb (byte 8 0) value))
-  (values))
-
-(define-ftype (setf ref/be32) (u32 buffer/u8 index) (values))
-(declaim (inline (setf ref/be32)))
-(defun (setf ref/be32) (value buffer index)
-  (declare (optimize (speed 3)))
-  (setf (aref buffer (+ index 0)) (ldb (byte 8 24) value)
-        (aref buffer (+ index 1)) (ldb (byte 8 16) value)
-        (aref buffer (+ index 2)) (ldb (byte 8 8) value)
-        (aref buffer (+ index 3)) (ldb (byte 8 0) value))
-  (values))
-
-(define-ftype ref/le32/u16 (buffer/u16 index) u32)
-(declaim (inline ref/le32/u16))
-(defun ref/le32/u16 (buffer index)
-  (declare (optimize (speed 3)))
-  (let ((value 0))
-    (setf (ldb (byte 16 0) value) (aref buffer (+ index 0))
-          (ldb (byte 16 16) value) (aref buffer (+ index 1)))
-    value))
-
-(define-ftype ref/be32/u16 (buffer/u16 fixnum) u32)
-(declaim (inline ref/be32/u16))
-(defun ref/be32/u16 (buffer index)
-  (declare (optimize (speed 3)))
-  (let ((value 0))
-    (setf (ldb (byte 16 16) value) (aref buffer (+ index 0))
-          (ldb (byte 16 0) value) (aref buffer (+ index 1)))
-    value))
-
-(define-ftype (setf ref/le32/u16) (u32 buffer/u16 fixnum) (values))
-(declaim (inline (setf ref/le32/u16)))
-(defun (setf ref/le32/u16) (value buffer index)
-  (declare (optimize (speed 3)))
-  (setf (aref buffer (+ index 0)) (ldb (byte 16 0) value)
-        (aref buffer (+ index 1)) (ldb (byte 16 16) value))
-  (values))
-
-(define-ftype (setf ref/be32/u16) (u32 buffer/u16 fixnum) (values))
-(declaim (inline (setf ref/be32/u16)))
-(defun (setf ref/be32/u16) (value buffer index)
-  (declare (optimize (speed 3)))
-  (setf (aref buffer (+ index 0)) (ldb (byte 16 16) value)
-        (aref buffer (+ index 1)) (ldb (byte 16 0) value))
-  (values))
-
-(eval-always
-  (defun check-pixel-format (name bpp endianness lanes swizzle storage encoder decoder)
-    (unless (symbolp name)
-      (error "Pixel codec name must be a symbol, got ~s" name))
-    (unless (typep bpp 'bpp)
-      (error "Only bpp 8/16/24/32 supported, got ~s" bpp))
-    (unless (member endianness '(:le :be))
-      (error "Endianness must be :LE or :BE, got ~s" endianness))
-    (unless (and (listp lanes) (<= 1 (length lanes) 4))
-      (error "Lanes must be a list of 1 to 4 (size position) forms, got ~s" lanes))
-    (dolist (lane lanes)
-      (unless (listp lane)
-        (error "Lane must be a list of (size position), got ~s" lane))
-      (destructuring-bind (size position) lane
-        (unless (and (integerp size) (<= 1 size bpp))
-          (error "Lane size must be 1..~d, got ~s" size bpp))
-        (unless (and (integerp position) (<= 0 position (1- bpp)))
-          (error "Lane position must be 0..~d, got ~s" (1- bpp) position))
-        (when (> (+ position size) bpp)
-          (error "Lane overruns pixel: (~d ~d) > bpp" size position))))
-    (unless (and (listp swizzle) (= (length swizzle) (length lanes)))
-      (error "Swizzle must be a list of the same length as lanes, got ~s" swizzle))
-    (dolist (index swizzle)
-      (unless (and (integerp index) (<= 0 index 3))
-        (error "Swizzle indices must be 0..~d, got ~s" 3 index)))
-    (unless (typep storage 'storage)
-      (error "Storage must be one of :U8, :U16, :U24, :U32, got ~s" storage))
-    (unless (symbolp encoder)
-      (error "Encoder must be a symbol, got ~s" encoder))
-    (unless (symbolp decoder)
-      (error "Decoder must be a symbol, got ~s" decoder))))
-
-(eval-always
-  (defun get-storage-stride (storage bpp)
-    (unless (typep bpp 'bpp)
-      (error "only bpp 8/16/24/32 supported, got: ~d" bpp))
+(defun check-storage (storage layout)
+  (let ((valid '(:u8 :u16 :u32 :f32 :f64)))
+    (unless (member storage valid)
+      (error ":STORAGE must be one of ~{~s~^, ~}. Got: ~s" valid storage))
     (case storage
-      (:u8
-       (truncate bpp 8))
-      (:u16
-       (unless (or (= bpp 16) (= bpp 32))
-         (error "storage ~s requires 16bpp or 32bpp, got ~d" storage bpp))
-       (truncate bpp 16))
-      (:u24
-       (unless (= bpp 24)
-         (error "storage ~s requires 24bpp, got ~d" storage bpp))
-       1)
-      (:u32
-       (unless (= bpp 32)
-         (error "storage ~s requires 32bpp, got: ~d" storage bpp))
-       1)
-      (t
-       (error "unsupported storage type: ~s" storage)))))
+      ((:f32 :f64)
+       (unless (eq layout :unpacked)
+         (error ":LAYOUT must be :UNPACKED for :STORAGE :F32/F64. Got: ~s" layout))))))
 
-(eval-always
-  (defun get-storage-ref-symbol (storage endian bytes)
-    (ecase storage
-      (:u8
-       (ecase endian
-         (:le
-          (ecase bytes
-            (1 'ref/le8)
-            (2 'ref/le16)
-            (3 'ref/le24)
-            (4 'ref/le32)))
-         (:be
-          (ecase bytes
-            (1 'ref/be8)
-            (2 'ref/be16)
-            (3 'ref/be24)
-            (4 'ref/be32)))))
-      (:u16
-       (ecase endian
-         (:le
-          (ecase bytes
-            (1 'aref)
-            (2 'ref/le32/u16)))
-         (:be
-          (ecase bytes
-            (1 'aref)
-            (2 'ref/be32/u16)))))
-      ((:u24 :u32)
-       'aref))))
+(defun check-channels (channels)
+  (let ((valid '(1 2 3 4)))
+    (unless (member channels valid)
+      (error ":CHANNELS must be one of ~{~s~^, ~}. Got: ~s" valid channels))))
 
-(eval-always
-  (defun get-storage-buffer-type (storage)
-    (ecase storage
-      (:u8 'buffer/u8)
-      (:u16 'buffer/u16)
-      (:u24 'buffer/u24)
-      (:u32 'buffer/u32))))
+(defun check-swizzle (swizzle channels)
+  (unless (and (listp swizzle) (= (length swizzle) channels))
+    (error ":SWIZZLE must be a list of one element per channel. Got: ~s" swizzle))
+  (unless (= (length (remove-duplicates swizzle)) (length swizzle))
+    (error ":SWIZZLE indices must be unique. Got: ~s" swizzle))
+  (dolist (index swizzle)
+    (unless (and (integerp index) (<= 0 index 3))
+      (error ":SWIZZLE indices must be 0..~d. Got: ~s" 3 index))))
 
-(eval-always
-  (defun lane->f64-form (lane lanes value-var)
-    (if-let ((spec (nth lane lanes)))
-      (destructuring-bind (bits shift) spec
-        `(* (ldb (byte ,bits ,shift) ,value-var) ,(/ (f64 (1- (ash 1 bits))))))
-      0d0)))
+(defun check-encoder (encoder)
+  (unless (symbolp encoder)
+    (error "Encoder must be a symbol, got ~s" encoder)))
 
-(eval-always
-  (defun f64->lane-form (lane lanes value-var lane-var)
-    (destructuring-bind (bits shift) (nth lane lanes)
-      (let* ((clamped `(s:clamp ,lane-var 0d0 1d0))
-             (value `(truncate (+ (* ,clamped ,(1- (ash 1 bits))) 0.5d0))))
-        `(setf (ldb (byte ,bits ,shift) ,value-var) ,value)))))
+(defun check-decoder (decoder)
+  (unless (symbolp decoder)
+    (error "Decoder must be a symbol, got ~s" decoder)))
 
-(eval-always
-  (defun generate-decoder (name buffer-type stride lanes swizzle ref)
-    `((define-ftype ,name (,buffer-type index (f64-array (*)) index index) (values))
-      (declaim (inline ,name))
-      (defun ,name (src src-index dest dest-index count)
-        (declare (optimize (speed 3)))
-        (dotimes (i count)
-          (let* ((index (+ dest-index (* i 4)))
-                 (value (,ref src (* (+ src-index i) ,stride))))
-            (declare (type index index))
-            (setf ,@(loop :for lane-index :below (length lanes)
-                          :for channel-index := (nth lane-index swizzle)
-                          :collect `(aref dest (+ index ,channel-index))
-                          :collect (lane->f64-form lane-index lanes 'value)))))
-        (values)))))
+(defun update-properties (name properties)
+  (let ((channels (getf properties :channels))
+        (storage (getf properties :storage))
+        (layout (getf properties :layout)))
+    (do-plist (k v properties)
+      (setf (get name (format-symbol #.*package* "%~a" k)) v))
+    (when (eq layout :packed)
+      (loop :with word-bits := (ecase storage (:u8 8) (:u16 16) (:u32 32))
+            :with lane-bits := (truncate word-bits channels)
+            :for lane-index :below channels
+            :for shift := (- word-bits (* lane-bits (1+ lane-index)))
+            :collect (list lane-bits shift) :into lanes
+            :finally (setf (get name '%lanes) lanes)))))
 
-(eval-always
-  (defun generate-encoder (name buffer-type stride lanes swizzle ref)
+(define-ftype layout (pixel-format) (member :packed :unpacked))
+(declaim (inline layout))
+(defun layout (pixel-format)
+  (declare (optimize (speed 3)))
+  (get pixel-format '%layout))
+
+(define-ftype storage (pixel-format) storage)
+(declaim (inline storage))
+(defun storage (pixel-format)
+  (declare (optimize (speed 3)))
+  (get pixel-format '%storage))
+
+(define-ftype channel-count (pixel-format) (integer 1 4))
+(declaim (inline channel-count))
+(defun channel-count (pixel-format)
+  (declare (optimize (speed 3)))
+  (get pixel-format '%channels))
+
+(define-ftype encoder (pixel-format) fn)
+(declaim (inline encoder))
+(defun encoder (pixel-format)
+  (declare (optimize (speed 3)))
+  (get pixel-format '%encoder))
+
+(define-ftype decoder (pixel-format) fn)
+(declaim (inline decoder))
+(defun decoder (pixel-format)
+  (declare (optimize (speed 3)))
+  (get pixel-format '%decoder))
+
+(defun generate-encode-form (value bits)
+  `(truncate (+ (* (s:clamp ,value 0d0 1d0) ,(1- (ash 1 bits))) 0.5d0)))
+
+(defun generate-encode-form/packed (place value lane)
+  (destructuring-bind (bits shift) lane
+    `((ldb (byte ,bits ,shift) ,place) ,(generate-encode-form value bits))))
+
+(defun generate-encode-form/unpacked (value storage)
+  (ecase storage
+    ((:u8 :u16 :u32)
+     (generate-encode-form value (ecase storage (:u8 8) (:u16 16) (:u32 32))))
+    (:f32
+     `(f32 ,value))
+    (:f64
+     value)))
+
+(defun generate-encoder (format)
+  (let* ((name (get format '%encoder))
+         (layout (get format '%layout))
+         (storage (get format '%storage))
+         (buffer-type (format-symbol #.*package* "BUFFER/~a" storage))
+         (lanes (get format '%lanes))
+         (stride (ecase layout (:packed 1) (:unpacked (get format '%channels))))
+         (swizzle (get format '%swizzle)))
     `((define-ftype ,name ((f64-array (*)) index ,buffer-type index index) (values))
       (declaim (inline ,name))
       (defun ,name (src src-index dest dest-index count)
         (declare (optimize (speed 3)))
         (dotimes (i count)
-          (let ((index (+ src-index (* i 4)))
-                (value 0))
-            (declare (type index index))
-            ,@(loop :for lane-index :below (length lanes)
-                    :for channel-index := (nth lane-index swizzle)
-                    :for ref-form := `(aref src (+ index ,channel-index))
-                    :collect (f64->lane-form lane-index lanes 'value ref-form)
-                      :into forms
-                    :finally (return (remove nil forms)))
-            (setf (,ref dest (* (+ dest-index i) ,stride)) value)))
-        (values)))))
+          (let ((decoded-pixel-index (+ src-index (* i 4)))
+                (encoded-pixel-index (* (+ dest-index i) ,stride))
+                ,@(when (eq layout :packed)
+                    '((pixel 0))))
+            (setf
+             ,@(loop :for lane-index :below (length swizzle)
+                     :for lane := (nth lane-index lanes)
+                     :for channel-index := (nth lane-index swizzle)
+                     :for decoded := `(aref src (+ decoded-pixel-index ,channel-index))
+                     :append (ecase layout
+                               (:packed
+                                (generate-encode-form/packed 'pixel decoded lane))
+                               (:unpacked
+                                `((aref dest (+ encoded-pixel-index ,lane-index))
+                                  ,(generate-encode-form/unpacked decoded storage)))))
+             ,@(when (eq layout :packed)
+                 `((aref dest encoded-pixel-index) pixel)))))
+        (values))
+      (setf (get ',format '%encoder) (fdefinition ',name)))))
 
-(defmacro define-pixel-format
-    (name &body (&key bpp endianness lanes swizzle storage encoder decoder))
+(defun generate-decode-form (value bits)
+  `(* ,value (f64 ,(/ (1- (ash 1 bits))))))
+
+(defun generate-decode-form/packed (value lane)
+  (destructuring-bind (bits shift) lane
+    (generate-decode-form `(ldb (byte ,bits ,shift) ,value) bits)))
+
+(defun generate-decode-form/unpacked (value storage)
+  (ecase storage
+    ((:u8 :u16 :u32)
+     (generate-decode-form value (ecase storage (:u8 8) (:u16 16) (:u32 32))))
+    (:f32
+     `(f64 ,value))
+    (:f64
+     value)))
+
+(defun generate-decoder (format)
+  (let* ((name (get format '%decoder))
+         (layout (get format '%layout))
+         (storage (get format '%storage))
+         (buffer-type (format-symbol #.*package* "BUFFER/~a" storage))
+         (lanes (get format '%lanes))
+         (stride (ecase layout (:packed 1) (:unpacked (get format '%channels))))
+         (swizzle (get format '%swizzle)))
+    `((define-ftype ,name (,buffer-type index (f64-array (*)) index index) (values))
+      (declaim (inline ,name))
+      (defun ,name (src src-index dest dest-index count)
+        (declare (optimize (speed 3)))
+        (dotimes (i count)
+          (let* ((decoded-pixel-index (+ dest-index (* i 4)))
+                 (encoded-pixel-index (* (+ src-index i) ,stride))
+                 ,@(when (eq layout :packed)
+                     `((pixel (aref src encoded-pixel-index)))))
+            (setf
+             ,@(loop :for channel-index :below 4
+                     :for lane-index := (position channel-index swizzle)
+                     :for encoded := `(aref src (+ encoded-pixel-index ,lane-index))
+                     :collect `(aref dest (+ decoded-pixel-index ,channel-index))
+                     :collect (if lane-index
+                                  (ecase layout
+                                    (:packed
+                                     (generate-decode-form/packed 'pixel (nth lane-index lanes)))
+                                    (:unpacked
+                                     (generate-decode-form/unpacked encoded storage)))
+                                  (if (= channel-index 3) 1d0 0d0))))))
+        (values))
+      (setf (get ',format '%decoder) (fdefinition ',name)))))
+
+(defmacro define-pixel-format (name &body (&rest args
+                                           &key layout storage channels swizzle encoder decoder))
+  (check-layout layout)
+  (check-storage storage layout)
+  (check-channels channels)
+  (check-swizzle swizzle channels)
+  (check-encoder encoder)
+  (check-decoder decoder)
+  (update-properties name args)
   `(progn
-     (check-pixel-format ',name ',bpp ',endianness ',lanes ',swizzle ',storage ',encoder ',decoder)
-     ,@(let* ((stride (get-storage-stride storage bpp))
-              (ref (get-storage-ref-symbol storage endianness stride))
-              (buffer-type (get-storage-buffer-type storage)))
-         `(,@(generate-encoder encoder buffer-type stride lanes swizzle ref)
-           ,@(generate-decoder decoder buffer-type stride lanes swizzle ref)
-           (setf (get ',name :encoder) (fdefinition ',encoder)
-                 (get ',name :decoder) (fdefinition ',decoder)
-                 (get ',name :storage) ,storage
-                 (get ',name :channels) ,(length lanes)
-                 (get ',name :bpp) ,bpp)))))
-
-(define-pixel-format rgba8888/u8
-  :bpp 32
-  :endianness :le
-  :lanes ((8 0) (8 8) (8 16) (8 24))
-  :swizzle (0 1 2 3)
-  :storage :u8
-  :encoder encode-rgba8888/u8
-  :decoder decode-rgba8888/u8)
-
-(define-pixel-format rgba8888/u32
-  :bpp 32
-  :endianness :le
-  :lanes ((8 24) (8 16) (8 8) (8 0))
-  :swizzle (0 1 2 3)
-  :storage :u32
-  :encoder encode-rgba8888/u32
-  :decoder decode-rgba8888/u32)
-
-(define-pixel-format abgr8888/u8
-  :bpp 32
-  :endianness :le
-  :lanes ((8 0) (8 8) (8 16) (8 24))
-  :swizzle (3 2 1 0)
-  :storage :u8
-  :encoder encode-abgr8888/u8
-  :decoder decode-abgr8888/u8)
-
-(define-pixel-format abgr8888/u32
-  :bpp 32
-  :endianness :le
-  :lanes ((8 24) (8 16) (8 8) (8 0))
-  :swizzle (3 2 1 0)
-  :storage :u32
-  :encoder encode-abgr8888/u32
-  :decoder decode-abgr8888/u32)
-
-(define-pixel-format rgb888/u8
-  :bpp 24
-  :endianness :le
-  :lanes ((8 0) (8 8) (8 16))
-  :swizzle (0 1 2)
-  :storage :u8
-  :encoder encode-rgb888/u8
-  :decoder decode-rgb888/u8)
-
-(define-pixel-format bgr888/u8
-  :bpp 24
-  :endianness :le
-  :lanes ((8 0) (8 8) (8 16))
-  :swizzle (2 1 0)
-  :storage :u8
-  :encoder encode-bgr888/u8
-  :decoder decode-bgr888/u8)
-
-(define-pixel-format ga1616/u16
-  :bpp 32
-  :endianness :le
-  :lanes ((16 0) (16 16))
-  :swizzle (0 3)
-  :storage :u16
-  :encoder encode-ga1616/u16
-  :decoder decode-ga1616/u16)
-
-(define-pixel-format ga1616/u32
-  :bpp 32
-  :endianness :be
-  :lanes ((16 16) (16 0))
-  :swizzle (0 3)
-  :storage :u32
-  :encoder encode-ga1616/u32
-  :decoder decode-ga1616/u32)
+     ,@(generate-encoder name)
+     ,@(generate-decoder name)))
