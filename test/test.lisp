@@ -407,3 +407,16 @@
     (is (equalp dest dest-copy))
     (pf:encode-rgba8888/u8 dest 0 src 0 0)
     (is (equalp src src-copy))))
+
+(test pixel-format.define-pixel-format.loaded-from-fasl
+  (load-as-fresh-image '(pf:define-pixel-format fasl-test/u32
+                          :layout :packed
+                          :channels 4
+                          :swizzle (0 1 2 3)
+                          :storage :u32
+                          :encoder encode-fasl-test/u32
+                          :decoder decode-fasl-test/u32))
+  (is (eq (get 'fasl-test/u32 'pf::%storage) :u32))
+  (is (eq (get 'fasl-test/u32 'pf::%layout) :packed))
+  (is (eql (get 'fasl-test/u32 'pf::%channels) 4))
+  (is (equal (get 'fasl-test/u32 'pf::%lanes) '((8 24) (8 16) (8 8) (8 0)))))

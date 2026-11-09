@@ -214,5 +214,6 @@
   (check-decoder decoder)
   (update-properties name args)
   `(progn
+     (update-properties ',name ',args)
      ,@(generate-encoder name)
      ,@(generate-decoder name)))
