@@ -420,3 +420,9 @@
   (is (eq (get 'fasl-test/u32 'pf::%layout) :packed))
   (is (eql (get 'fasl-test/u32 'pf::%channels) 4))
   (is (equal (get 'fasl-test/u32 'pf::%lanes) '((8 24) (8 16) (8 8) (8 0)))))
+
+(test pixel-format.type.admits-only-defined-formats
+  (is (null (remove-if (lambda (name)
+                         (and (functionp (pf:encoder name))
+                              (functionp (pf:decoder name))))
+                       (pixel-formats)))))

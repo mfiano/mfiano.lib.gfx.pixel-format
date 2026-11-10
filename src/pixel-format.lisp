@@ -6,9 +6,9 @@
 
 (deftype pixel-format/u32 () '(member abgr8888/u32 ga1616/u32 rgba8888/u32))
 
-(deftype pixel-format/f32 () '(member abgr/f32 bgr/f32 ga/f32 gray/f32 rgb/f32 rgba/f32))
+(deftype pixel-format/f32 () '(member abgr/f32 bgr/f32 rgb/f32 rgba/f32))
 
-(deftype pixel-format/f64 () '(member abgr/f64 bgr/f64 ga/f64 gray/f64 rgb/f64 rgba/f64))
+(deftype pixel-format/f64 () '(member abgr/f64 bgr/f64 rgb/f64 rgba/f64))
 
 (deftype pixel-format ()
   '(or pixel-format/u8 pixel-format/u16 pixel-format/u32 pixel-format/f32 pixel-format/f64))

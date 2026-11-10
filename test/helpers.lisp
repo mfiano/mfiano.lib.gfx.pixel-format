@@ -7,6 +7,12 @@
 
 (in-package #:mfiano.lib.gfx.pixel-format/test)
 
+(defun pixel-formats ()
+  (let ((formats nil))
+    (do-symbols (symbol '#:mfiano.lib.gfx.pixel-format formats)
+      (when (typep symbol 'pf:pixel-format)
+        (pushnew symbol formats)))))
+
 (defun load-as-fresh-image (form)
   (uiop:with-temporary-file (:pathname source :type "lisp")
     (with-open-file (out source :direction :output :if-exists :supersede)
