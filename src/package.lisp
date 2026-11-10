@@ -42,8 +42,8 @@
   (:export
    #:encode-abgr8888/u8
    #:encode-abgr8888/u32
-   #:encode/abgr/f32
-   #:encode/abgr/f64
+   #:encode-abgr/f32
+   #:encode-abgr/f64
    #:encode-bgr888/u8
    #:encode-bgr/f32
    #:encode-bgr/f64

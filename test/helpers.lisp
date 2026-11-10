@@ -13,6 +13,19 @@
       (when (typep symbol 'pf:pixel-format)
         (pushnew symbol formats)))))
 
+(defun codec-exports ()
+  (let ((codecs nil))
+    (do-external-symbols (symbol '#:mfiano.lib.gfx.pixel-format codecs)
+      (let ((name (symbol-name symbol)))
+        (when (or (eql 0 (search "ENCODE" name))
+                  (eql 0 (search "DECODE" name)))
+          (push symbol codecs))))))
+
+(defun exported-function-p (name)
+  (multiple-value-bind (symbol status) (find-symbol name '#:mfiano.lib.gfx.pixel-format)
+    (and (eq status :external)
+         (fboundp symbol))))
+
 (defun load-as-fresh-image (form)
   (uiop:with-temporary-file (:pathname source :type "lisp")
     (with-open-file (out source :direction :output :if-exists :supersede)

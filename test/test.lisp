@@ -421,6 +421,14 @@
   (is (eql (get 'fasl-test/u32 'pf::%channels) 4))
   (is (equal (get 'fasl-test/u32 'pf::%lanes) '((8 24) (8 16) (8 8) (8 0)))))
 
+(test pixel-format.exports.codecs-are-defined
+  (is (null (remove-if #'fboundp (codec-exports)))))
+
+(test pixel-format.exports.codecs-of-every-format
+  (dolist (name (mapcar #'symbol-name (pixel-formats)))
+    (is (exported-function-p (format nil "ENCODE-~a" name)))
+    (is (exported-function-p (format nil "DECODE-~a" name)))))
+
 (test pixel-format.type.admits-only-defined-formats
   (is (null (remove-if (lambda (name)
                          (and (functionp (pf:encoder name))
