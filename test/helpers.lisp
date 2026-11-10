@@ -21,10 +21,12 @@
                   (eql 0 (search "DECODE" name)))
           (push symbol codecs))))))
 
+(defun exported? (name)
+  (eq (nth-value 1 (find-symbol name '#:mfiano.lib.gfx.pixel-format)) :external))
+
 (defun exported-function? (name)
-  (multiple-value-bind (symbol status) (find-symbol name '#:mfiano.lib.gfx.pixel-format)
-    (and (eq status :external)
-         (fboundp symbol))))
+  (and (exported? name)
+       (fboundp (find-symbol name '#:mfiano.lib.gfx.pixel-format))))
 
 (defun load-as-fresh-image (form)
   (uiop:with-temporary-file (:pathname source :type "lisp")

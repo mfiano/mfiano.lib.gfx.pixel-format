@@ -434,3 +434,7 @@
                          (and (functionp (pf:encoder name))
                               (functionp (pf:decoder name))))
                        (pixel-formats)))))
+
+(test pixel-format.exports.format-type-per-storage
+  (dolist (storage '(:u8 :u16 :u32 :f32 :f64))
+    (is (exported? (format nil "PIXEL-FORMAT/~a" storage)))))

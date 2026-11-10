@@ -9,7 +9,9 @@
    #:pixel-format
    #:pixel-format/u8
    #:pixel-format/u16
-   #:pixel-format/u32)
+   #:pixel-format/u32
+   #:pixel-format/f32
+   #:pixel-format/f64)
   ;; definer
   (:export
    #:define-pixel-format)
