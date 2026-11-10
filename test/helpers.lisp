@@ -21,7 +21,7 @@
                   (eql 0 (search "DECODE" name)))
           (push symbol codecs))))))
 
-(defun exported-function-p (name)
+(defun exported-function? (name)
   (multiple-value-bind (symbol status) (find-symbol name '#:mfiano.lib.gfx.pixel-format)
     (and (eq status :external)
          (fboundp symbol))))

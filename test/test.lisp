@@ -426,8 +426,8 @@
 
 (test pixel-format.exports.codecs-of-every-format
   (dolist (name (mapcar #'symbol-name (pixel-formats)))
-    (is (exported-function-p (format nil "ENCODE-~a" name)))
-    (is (exported-function-p (format nil "DECODE-~a" name)))))
+    (is (exported-function? (format nil "ENCODE-~a" name)))
+    (is (exported-function? (format nil "DECODE-~a" name)))))
 
 (test pixel-format.type.admits-only-defined-formats
   (is (null (remove-if (lambda (name)
