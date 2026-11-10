@@ -86,14 +86,14 @@ Encoders quantize `double-float` channels in `[0,1]` to integer values using rou
 
 ### Unpacked floating-point
 
-* `:rgba/f32`: 4 unpacked `single-float`s, RGBA channel order
-* `:abgr/f32`: 4 unpacked `single-float`s, ABGR channel order (swizzled to RGBA for the destination pixel buffer)
-* `:rgba/f64`: 4 unpacked `double-float`s, RGBA channel order
-* `:abgr/f64`: 4 unpacked `double-float`s, ABGR channel order (swizzled to RGBA for the destination pixel buffer)
-* `:rgb/f32`: 3 unpacked `single-float`s, RGB channel order
-* `:bgr/f32`: 3 unpacked `single-float`s, BGR channel order (swizzled to RGB for the destination pixel buffer)
-* `:rgb/f64`: 3 unpacked `double-float`s, RGB channel order
-* `:bgr/f64`: 3 unpacked `double-float`s, BGR channel order (swizzled to RGB for the destination pixel buffer)
+* `rgba/f32`: 4 unpacked `single-float`s, RGBA channel order
+* `abgr/f32`: 4 unpacked `single-float`s, ABGR channel order (swizzled to RGBA for the destination pixel buffer)
+* `rgba/f64`: 4 unpacked `double-float`s, RGBA channel order
+* `abgr/f64`: 4 unpacked `double-float`s, ABGR channel order (swizzled to RGBA for the destination pixel buffer)
+* `rgb/f32`: 3 unpacked `single-float`s, RGB channel order
+* `bgr/f32`: 3 unpacked `single-float`s, BGR channel order (swizzled to RGB for the destination pixel buffer)
+* `rgb/f64`: 3 unpacked `double-float`s, RGB channel order
+* `bgr/f64`: 3 unpacked `double-float`s, BGR channel order (swizzled to RGB for the destination pixel buffer)
 
 In GA formats, gray decodes into canonical channel 0, and alpha decodes into canonical channel 3. Other channels decode as `0d0`.
 
